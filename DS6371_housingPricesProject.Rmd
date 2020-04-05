@@ -166,7 +166,7 @@ aOne_df <-
         )
   )
 
-## Plot log transformed x-var
+## Plot log transformed x-variable
 
 aOne_df %>%
   ggplot() +
