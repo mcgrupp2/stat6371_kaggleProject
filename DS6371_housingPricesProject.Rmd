@@ -1,0 +1,105 @@
+---
+title: "stat6371_kaggleProject"
+output: html_document
+---
+stat6371_kaggleProject
+```{r packageInstalls eval=FALSE}
+
+# install.packages("tidyverse")
+# install.packages("naniar")
+
+```
+
+
+
+
+```{r loadLibraries, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(naniar)
+
+
+```
+
+
+```{r dataLoad}
+
+## Load raw training set
+
+rawTrain_df <- read.csv("data/train.csv")
+
+
+## Listing col names
+
+names(rawTrain_df)
+
+#summary(rawTrain_df)
+
+
+## Describe data, identify categorical/factor variables
+
+str(rawTrain_df)
+```
+
+
+```{r missingValPlot}
+## Quick plot to identify if there are missing values
+
+gg_miss_var(rawTrain_df)
+
+## Count number of missing vals in each col
+
+isNaCols <- colSums(is.na(rawTrain_df), na.rm = FALSE)%>% tibble::enframe(name = NULL)
+
+## Get the col indexes to identify which rows have missing vals
+
+naCols <- rawTrain_df[ ,which(!isNaCols == 0)]
+
+countNaRows <- colSums(is.na(naCols), na.rm = FALSE)%>% tibble::enframe(name = NULL)
+
+naColCounts <- cbind(names(naCols),countNaRows)
+
+## Hold the column names and how many are missing from each, we don't want NAs in any
+## columns of interest.
+
+naColz <- naColCounts[order(-naColCounts$value),]
+```
+
+ANALYSIS 1: Assume that Century 21 Ames (a real estate company) in Ames Iowa has commissioned you to answer a very important question with respect to their business.  Century 21 Ames only sells houses in the NAmes, Edwards and BrkSide neighborhoods and would like to simply get an estimate of how the SalePrice of the house is related to the square footage of the living area of the house (GrLIvArea) and if the SalesPrice (and its relationship to square footage) depends on which neighborhood the house is located in. Build and fit a model that will answer this question, keeping in mind that realtors prefer to talk about living area in increments of 100 sq. ft. Provide your client with the estimate (or estimates if it varies by neighborhood) as well as confidence intervals for any estimate(s) you provide. It turns out that Century 21’s leadership team has a member that has some statistical background. Therefore, make sure and provide evidence that the model assumptions are met and that any suspicious observations (outliers / influential observations) have been identified and addressed. Finally, of course, provide your client with a well written conclusion that quantifies the relationship between living area and sale price with respect to these three neighborhoods. Remember that the company is only concerned with the three neighborhoods they sell in. 
+
+
+```{r analysis1_dataload}
+
+## Split the raw dataframe with desired neighborhoods.
+
+a1_df <- 
+  rawTrain_df %>% 
+  filter(
+    (Neighborhood == "NAmes" | 
+       Neighborhood == "Edwards" |
+       Neighborhood == "BrkSide"
+    )
+    )
+
+## Number of Rows
+
+nrow(a1_df)
+
+## Find NA values in the Analysis 1 dataframe
+
+a1_isNaCols <- colSums(is.na(a1_df), na.rm = FALSE)%>% tibble::enframe(name = NULL)
+
+a1_naCols <- a1_df[ ,which(!a1_isNaCols == 0)]
+
+a1_countNaRows <- colSums(is.na(a1_naCols), na.rm = FALSE)%>% tibble::enframe(name = NULL)
+
+a1_naColCounts <- cbind(names(a1_naCols),a1_countNaRows)
+
+a1_naColz <- a1_naColCounts[order(-a1_naColCounts$value),]
+
+```
+
+
+ANALYSIS 2: Build the most predictive model for sales prices of homes in all of Ames Iowa.  This includes all neighborhoods. Your group is limited to only the techniques we have learned in 6371 (no random forests or other methods we have not yet covered).  Specifically, you should produce 4 models: one from forward selection, one from backwards elimination, one from stepwise selection, and one that you build custom.  The custom model could be one of the three preceding models or one that you build by adding or subtracting variables at your will.  Generate an adjusted R2, CV Press and Kaggle Score for each of these models and clearly describe which model you feel is the best in terms of being able to predict future sale prices of homes in Ames, Iowa.  In your paper, please include a table similar to the one below.  The group with the lowest public Kaggle score will receive an extra 3 bonus points on the final exam!  
+
