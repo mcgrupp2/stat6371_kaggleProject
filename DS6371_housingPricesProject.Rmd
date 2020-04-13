@@ -1,27 +1,34 @@
 ---
 title: "stat6371_kaggleProject"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 ---
-stat6371_kaggleProject
-```{r packageInstalls eval=FALSE}
 
+```{r packageInstalls, eval=FALSE}
 # install.packages("tidyverse")
 # install.packages("naniar")
-
+# install.packages("car")
+# install.packages("lmvar")
+# install.packages("gvlma")
+# install.packages("DAAG")
+# install.packages("lindia")
+# install.packages("pander")
 ```
-
-
-
 
 ```{r loadLibraries, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 library(naniar)
-
-
+library(car)
+library(lmvar)
+library(gvlma)
+library(DAAG)
+library(gridExtra)
+library(lindia)
+library(pander)
 ```
-
 
 ```{r dataLoad}
 
@@ -32,18 +39,18 @@ rawTrain_df <- read.csv("data/train.csv")
 
 ## Listing col names
 
-names(rawTrain_df)
+# names(rawTrain_df)
 
-#summary(rawTrain_df)
+# summary(rawTrain_df)
 
 
 ## Describe data, identify categorical/factor variables
 
-str(rawTrain_df)
+# str(rawTrain_df)
 ```
 
 
-```{r missingValPlot}
+```{r missingValPlot, eval=FALSE, include=FALSE}
 ## Quick plot to identify if there are missing values
 
 gg_miss_var(rawTrain_df)
@@ -68,14 +75,13 @@ naColz <- naColCounts[order(-naColCounts$value),]
 
 ANALYSIS 1: Assume that Century 21 Ames (a real estate company) in Ames Iowa has commissioned you to answer a very important question with respect to their business.  Century 21 Ames only sells houses in the NAmes, Edwards and BrkSide neighborhoods and would like to simply get an estimate of how the SalePrice of the house is related to the square footage of the living area of the house (GrLIvArea) and if the SalesPrice (and its relationship to square footage) depends on which neighborhood the house is located in. Build and fit a model that will answer this question, keeping in mind that realtors prefer to talk about living area in increments of 100 sq. ft. Provide your client with the estimate (or estimates if it varies by neighborhood) as well as confidence intervals for any estimate(s) you provide. It turns out that Century 21’s leadership team has a member that has some statistical background. Therefore, make sure and provide evidence that the model assumptions are met and that any suspicious observations (outliers / influential observations) have been identified and addressed. Finally, of course, provide your client with a well written conclusion that quantifies the relationship between living area and sale price with respect to these three neighborhoods. Remember that the company is only concerned with the three neighborhoods they sell in.
 
-salePriceEstimate = B0 + B1 * GrLIvArea + B2 * Neighborhood (+ B3 * (GrLIvArea* Neighborhood))
 
 
 ```{r analysis1_dataSelection}
 
 ## Split the raw dataframe with desired neighborhoods.
 
-a1_df <- 
+aOne_df <- 
   rawTrain_df %>% 
   filter(
     (Neighborhood == "NAmes" | 
@@ -86,27 +92,27 @@ a1_df <-
 
 ## Number of Rows
 
-nrow(a1_df)
+# nrow(a1_df)
 
 ## Find NA values in the Analysis 1 dataframe
 ## Check to make sure there aren't NA values in our variables we want to use for prediction
-
-a1_isNaCols <- colSums(is.na(a1_df), na.rm = FALSE)%>% tibble::enframe(name = NULL)
-
-a1_naCols <- a1_df[ ,which(!a1_isNaCols == 0)]
-
-a1_countNaRows <- colSums(is.na(a1_naCols), na.rm = FALSE)%>% tibble::enframe(name = NULL)
-
-a1_naColCounts <- cbind(names(a1_naCols),a1_countNaRows)
-
-a1_naColz <- a1_naColCounts[order(-a1_naColCounts$value),]
+# 
+# a1_isNaCols <- colSums(is.na(a1_df), na.rm = FALSE)%>% tibble::enframe(name = NULL)
+# 
+# a1_naCols <- a1_df[ ,which(!a1_isNaCols == 0)]
+# 
+# a1_countNaRows <- colSums(is.na(a1_naCols), na.rm = FALSE)%>% tibble::enframe(name = NULL)
+# 
+# a1_naColCounts <- cbind(names(a1_naCols),a1_countNaRows)
+# 
+# a1_naColz <- a1_naColCounts[order(-a1_naColCounts$value),]
 
 ```
 
 ```{r dataSelection_analysisOne}
-colsOfInterest <- c("Neighborhood", "GrLivArea", "SalePrice")
+# colsOfInterest <- c("Neighborhood", "GrLivArea", "SalePrice")
 
-aOne_df <- a1_df[, colsOfInterest]
+# aOne_df <- a1_df#[, colsOfInterest]
 
 aOne_df %>%
   ggplot() +
@@ -150,21 +156,28 @@ ggplot(
   )
 
 
+
+
 ```
+
+
+
+
+
 
 ```{r}
 
 ## Add log transform column for x-var
 
-aOne_df <- 
-  mutate(
-    aOne_df,
-    logGrLivArea =
-      sapply(
-        aOne_df$GrLivArea, 
-        log
-        )
-  )
+ aOne_df <- 
+   mutate(
+     aOne_df,
+     logGrLivArea =
+       sapply(
+         aOne_df$GrLivArea, 
+         log
+         )
+   )
 
 ## Plot log transformed x-variable
 
@@ -211,7 +224,7 @@ aOne_df %>%
   ggplot() +
   geom_point(
     aes(
-      x=logGrLivArea,
+      x=GrLivArea,
       y=logSalePrice,
       color=Neighborhood
     )
@@ -220,7 +233,7 @@ aOne_df %>%
     method = lm,
     mapping = 
       aes(
-        x = aOne_df$logGrLivArea,
+        x = aOne_df$GrLivArea,
         y = aOne_df$logSalePrice
       ),
     formula = y ~ x
@@ -229,6 +242,43 @@ aOne_df %>%
     ~Neighborhood
   )
 ```
+
+```{r}
+#
+#aOne_df_trns <- 
+#  mutate(
+#    aOne_df_noLargePartials_2,
+#    salePriceSq = sapply(
+#      aOne_df_noLargePartials_2$logSalePrice, 
+#      function(x){
+#        x**3
+#        }
+#        )
+#    )
+#
+#aOne_df_trns %>%
+#  ggplot() +
+#  geom_point(
+#    aes(
+#      x=logGrLivArea,
+#      y=salePriceSq
+#    )
+#  ) +
+#  geom_smooth(
+#    method = lm,
+#    mapping = 
+#      aes(
+#        x = aOne_df_trns$logGrLivArea,
+#        y = aOne_df_trns$salePriceSq
+#      ),
+#    formula = y ~ x
+#  ) +
+#  facet_wrap(
+#    ~Neighborhood
+#  )
+#
+```
+
 
 
 ```{r}
@@ -261,5 +311,637 @@ ggplot(
 
 
 
+
+
+
+```{r}
+  
+# aOne_unTrns_lm <- 
+#   lm(
+#     aOne_df$SalePrice ~ 
+#       aOne_df$GrLivArea + 
+#       aOne_df$Neighborhood + 
+#       (aOne_df$GrLivArea * aOne_df$Neighborhood),
+#     aOne_df
+#   )
+
+aOne_TrnsXY_lm <- lm(
+    aOne_df$logSalePrice ~ 
+      aOne_df$logGrLivArea + 
+      aOne_df$Neighborhood + 
+      (aOne_df$logGrLivArea * aOne_df$Neighborhood),
+    aOne_df
+  )
+
+summary(aOne_TrnsXY_lm)
+
+# summary(aOne_unTrns_lm)
+
+press(aOne_TrnsXY_lm)
+
+
+```
+#```{r}
+#aOne_trns_lm <- lm(
+#    aOne_df_trns$salePriceSq ~ 
+#      aOne_df_trns$logGrLivArea + 
+#      aOne_df_trns$Neighborhood + 
+#      (aOne_df_trns$logGrLivArea * aOne_df_trns$Neighborhood),
+#    aOne_df_trns
+#  )
+#
+#summary(aOne_trns_lm)
+#
+#press(aOne_trns_lm)
+#
+#```
+
+```{r}
+# Assessing Outliers
+outlierTest(aOne_TrnsXY_lm) # Bonferonni p-value for most extreme obs
+qqPlot(aOne_TrnsXY_lm, main="QQ Plot") #qq plot for studentized resid
+#leveragePlots(aOne_TrnsXY_lm) # leverage plots
+```
+
+
+```{r}
+# Cook's D plot
+# identify D values > 4/(n-k-1)
+cutoff <- 
+  4/((nrow(aOne_df)-length(aOne_TrnsXY_lm$coefficients)-2))
+
+plot(
+  aOne_TrnsXY_lm, 
+  which=4, 
+  cook.levels=cutoff
+  )
+# Influence Plot
+influencePlot(
+  aOne_TrnsXY_lm, 
+  main="Influence Plot", 
+  sub="Circle size is proportional to Cook's Distance" 
+  )
+
+# aOne_df[339,] 
+```
+
+```{r}
+#mtcars[order(mpg),]
+
+edwrds <- 
+  aOne_df %>% 
+  filter(Neighborhood == "Edwards")
+
+edwrds[order(-edwrds$GrLivArea),]
+
+## Two properties with large GrLivArea, almost twice as large, but these homes are not complete.
+## Partial -	Home was not completed when last assessed (associated with New Homes)
+
+## Check the rest of the df for partial houses.
+
+aOne_df_noLargePartials <- 
+  aOne_df %>% 
+  filter(GrLivArea < 4500)
+
+summary(aOne_df)
+
+summary(aOne_df_noLargePartials)
+
+```
+
+```{r}
+aOne_noLargePartials_TrnsXY_lm <- lm(
+    aOne_df_noLargePartials$logSalePrice ~ 
+      aOne_df_noLargePartials$logGrLivArea + 
+      aOne_df_noLargePartials$Neighborhood + 
+      (aOne_df_noLargePartials$logGrLivArea * aOne_df_noLargePartials$Neighborhood),
+    aOne_df_noLargePartials
+  )
+
+plot(
+  aOne_noLargePartials_TrnsXY_lm, 
+  which=4, 
+  cook.levels=cutoff
+  )
+
+# Influence Plot
+influencePlot(
+  aOne_noLargePartials_TrnsXY_lm, 
+  main="Influence Plot", 
+  sub="Circle size is proportional to Cook's Distance"
+  )
+
+
+summary(aOne_noLargePartials_TrnsXY_lm)
+
+press(aOne_noLargePartials_TrnsXY_lm)
+
+```
+
+
+
+```{r}
+
+aOne_df_noLargePartials_2 <- 
+  mutate(
+    aOne_df_noLargePartials,
+    BlendNgbrhd =
+      sapply(
+        aOne_df_noLargePartials$Neighborhood, 
+        function(x)
+          {
+          ifelse(
+            x == "NAmes",
+            "NAmes",
+            "NotNAmes"
+          )
+          }
+        )
+    )
+
+```
+
+
+
+```{r}
+
+aOne_noLargePartials_2_TrnsXY_lm <- lm(
+    formula = aOne_df_noLargePartials_2$logSalePrice ~ 
+      aOne_df_noLargePartials_2$logGrLivArea + 
+      aOne_df_noLargePartials_2$BlendNgbrhd + 
+      aOne_df_noLargePartials_2$logGrLivArea:aOne_df_noLargePartials_2$BlendNgbrhd,
+    data = aOne_df_noLargePartials_2
+  )
+
+summary(aOne_noLargePartials_2_TrnsXY_lm)
+
+press(aOne_noLargePartials_2_TrnsXY_lm)
+```
+
+
+
+
+
+```{r}
+aOne_df_noLargePartials %>%
+  ggplot() +
+  geom_smooth(
+    method = lm,
+    mapping = 
+      aes(
+        x = aOne_df_noLargePartials$logGrLivArea,
+        y = aOne_df_noLargePartials$logSalePrice
+      )
+  ) +
+  geom_point(
+    aes(
+      x=logGrLivArea,
+      y=logSalePrice,
+      color=Neighborhood
+    )
+  ) +
+  facet_wrap(~Neighborhood)
+```
+
+
+```{r}
+aOne_df_noLargePartials_2 %>% 
+  ggplot() + 
+  geom_qq(
+    aes(
+      sample = logSalePrice
+    )
+  )
+
+```
+
+
+
+```{r}
+# aOne_noLargePartials_TrnsXY_lm2 <- lm(
+#     aOne_df_noLargePartials$logSalePrice ~ 
+#       aOne_df_noLargePartials$logGrLivArea,
+#     aOne_df_noLargePartials
+#   )
+# 
+# 
+# summary(aOne_noLargePartials_TrnsXY_lm2)
+
+```
+
+
+```{r}
+aOne_df_noLargePartials %>%
+  ggplot() +
+  geom_point(
+    aes(
+      x=logGrLivArea,
+      y=logSalePrice,
+      color=Neighborhood
+    )
+  ) +
+  facet_wrap(~Neighborhood)
+```
+
+
+```{r}
+ggplot(
+    aOne_noLargePartials_2_TrnsXY_lm
+  ) + 
+  geom_point(
+    aes(
+      x=.fitted, 
+      y=.resid
+    )
+  ) + 
+  facet_wrap(
+    ~aOne_df_noLargePartials$Neighborhood
+  )
+```
+
+
+```{r}
+# ggplot(aOne_df_noLargePartials, aes(logSalePrice, logGrLivArea, shape=Neighborhood, # colour=Neighborhood, fill=Neighborhood)) +
+#   geom_smooth(method="lm") +
+#   geom_point(size=3) +
+#   theme_bw() + 
+#   xlab("Years") +
+#   ylab("Concentrations (ppb)") +
+#   ggtitle("Banizoumbou")
+# 
+# ncvTest(
+#   aOne_noLargePartials_TrnsXY_lm
+# )
+# 
+# aOne_nLp_Txy_slp <- 
+#   spreadLevelPlot(
+#     aOne_noLargePartials_TrnsXY_lm
+#     )
+# 
+# aOne_nLp_Txy_slp$PowerTransformation
+```
+
+```{r}
+# gvlma.lm(aOne_noLargePartials_TrnsXY_lm, alphalevel = 0.05)
+# 
+# plot.gvlma(
+#   gvlma.lm(aOne_noLargePartials_TrnsXY_lm, alphalevel = 0.05)
+# )
+```
+
+
+```{r}
+# cv.lm(df = aOne_df_noLargePartials, form.lm = formula(aOne_df_noLargePartials_2$logSalePrice ~ 
+#       aOne_df_noLargePartials_2$logGrLivArea + 
+#       aOne_df_noLargePartials_2$BlendNgbrhd + 
+#       (aOne_df_noLargePartials_2$logGrLivArea * aOne_df_noLargePartials_2$BlendNgbrhd)), m=3, seed=2, # plotit=TRUE, printit=TRUE)
+```
+
+
 ANALYSIS 2: Build the most predictive model for sales prices of homes in all of Ames Iowa.  This includes all neighborhoods. Your group is limited to only the techniques we have learned in 6371 (no random forests or other methods we have not yet covered).  Specifically, you should produce 4 models: one from forward selection, one from backwards elimination, one from stepwise selection, and one that you build custom.  The custom model could be one of the three preceding models or one that you build by adding or subtracting variables at your will.  Generate an adjusted R2, CV Press and Kaggle Score for each of these models and clearly describe which model you feel is the best in terms of being able to predict future sale prices of homes in Ames, Iowa.  In your paper, please include a table similar to the one below.  The group with the lowest public Kaggle score will receive an extra 3 bonus points on the final exam!  
 
+
+
+
+## Analysis Question 1:
+
+### Restatement of Problem 
+
+Century 21 Ames would like an estimate of how the SalePrice of the house is related to the square footage of the living area of the house and if the SalesPrice depends on which neighborhood the house is located in. 
+
+### Build and Fit the Model
+
+From initial models, it was found that from these 3 neighborhoods in Century 21 Ames district, the only neighborhood that was statistically significant was North Ames. The other two neighborhoods in the models were treated as one. See the appedix for supplementary code of initial models.
+
+log(salePriceEstimate) = $\beta_{0}$ + $\beta_{1}$ log(GrLIvArea) + $\beta_{2}$ NAmes + $\beta_{3}$ (log(GrLIvArea)* NAmes)
+
+```{r echo=FALSE}
+## Add log transform column for x-var
+
+aOne_df <- 
+  mutate(
+    aOne_df,
+    logGrLivArea =
+      sapply(
+        aOne_df$GrLivArea, 
+        log
+        )
+  )
+
+## Add log transform column for y-var
+
+aOne_df <- 
+  mutate(
+    aOne_df,
+    logSalePrice =
+      sapply(
+        aOne_df$SalePrice, 
+        log
+        )
+  )
+
+# From inital models, it is only significant if the neighborhood is NAmes
+
+aOne_df <- 
+  mutate(
+    aOne_df,
+    BlendNgbrhd =
+      sapply(
+        aOne_df$Neighborhood, 
+        function(x)
+          {
+          ifelse(
+            x == "NAmes",
+            "NAmes",
+            "NotNAmes"
+          )
+          }
+        )
+    )
+
+## The two outlier properties in terms of GrLivArea were partially built 
+
+aOne_df_noLargePartials <- 
+  aOne_df %>% 
+  filter(GrLivArea < 4500)
+
+# summary(aOne_df)
+
+# summary(aOne_df_noLargePartials)
+
+aOne_lm <- 
+  lm(
+    aOne_df$logSalePrice ~ 
+      aOne_df$logGrLivArea + 
+      aOne_df$BlendNgbrhd + 
+      (aOne_df$logGrLivArea * aOne_df$BlendNgbrhd),
+    aOne_df_noLargePartials
+  )
+
+aOne_lm_noLargePartials <- 
+  lm(
+    aOne_df_noLargePartials$logSalePrice ~ 
+      aOne_df_noLargePartials$logGrLivArea + 
+      aOne_df_noLargePartials$BlendNgbrhd + 
+      (aOne_df_noLargePartials$logGrLivArea * aOne_df_noLargePartials$BlendNgbrhd),
+    aOne_df_noLargePartials
+  )
+
+```
+
+	 
+### Checking Assumptions 
+
+
+*Normality:* Judging from scatter plot, q-q plot, and histogram of residuals there is not strong enough evidence against normality. 
+
+```{r echo=FALSE}
+
+# Full dataset with partials scatter plots
+
+aOne_full_plot <- 
+  aOne_df %>%
+  ggplot() +
+  geom_smooth(
+    method = lm,
+    mapping = 
+      aes(
+        x = aOne_df$logGrLivArea,
+        y = aOne_df$logSalePrice
+      )
+  ) +
+  geom_point(
+    aes(
+      x=logGrLivArea,
+      y=logSalePrice,
+      color=Neighborhood
+    )
+  ) +
+  facet_wrap(~Neighborhood)
+
+# Partial dataset with partials removed
+
+aOne_nLp_plot <- 
+  aOne_df_noLargePartials %>% 
+  ggplot() + 
+  geom_smooth(
+    method = lm,
+    mapping = 
+      aes(
+        x = aOne_df_noLargePartials$logGrLivArea,
+        y = aOne_df_noLargePartials$logSalePrice
+      )
+  ) +
+  geom_point(
+    aes(
+      x=logGrLivArea,
+      y=logSalePrice,
+      color=Neighborhood
+    )
+  ) +
+  facet_wrap(~Neighborhood)
+
+grid.arrange(
+  aOne_full_plot,
+  aOne_nLp_plot
+)
+
+```
+
+
+
+```{r echo=FALSE}
+## QQ plots for each df
+aOne_df_noLargePartials %>% 
+  ggplot() + 
+  geom_qq(
+    aes(
+      sample = logSalePrice
+    )
+  )
+```
+
+
+```{r echo=FALSE,message=FALSE}
+## QQ plots for each df
+
+gg_reshist(
+  aOne_lm_noLargePartials
+)
+```
+
+
+*Linear Trend:*
+
+The transformed data appears to have a linear trend, this assumption seems to be satisfied.
+
+*Equal SD:*
+
+This is assumption is satisfied, though it seems that smaller values of x have somewhat of a right skew for values of y in the NAmes neighborhood. We will proceed with this in mind, but this assumption seems like it is satified.
+
+*Independence:*
+
+The data is assumed to be independent.
+
+
+#### Residual Plots 
+
+```{r echo=FALSE}
+ggplot(
+    aOne_lm_noLargePartials
+  ) + 
+  geom_point(
+    aes(
+      x=.fitted, 
+      y=.resid
+    )
+  )
+```
+
+
+
+
+
+
+
+#### Influential point analysis (Cook’s D and Leverage)
+
+
+
+```{r}
+plot(
+  aOne_lm, 
+  which=4, 
+  cook.levels=cutoff
+  )
+
+# Influence Plot
+influencePlot(
+  aOne_lm, 
+  main="Influence Plot", 
+  sub="Circle size is proportional to Cook's Distance"
+  )
+
+```
+
+
+
+
+```{r}
+plot(
+  aOne_lm_noLargePartials, 
+  which=4, 
+  cook.levels=cutoff
+  )
+
+# Influence Plot
+influencePlot(
+  aOne_lm_noLargePartials, 
+  main="Influence Plot", 
+  sub="Circle size is proportional to Cook's Distance"
+  )
+
+```
+
+
+#### Comparing Competing Models
+
+
+```{r}
+aOne_lm_summary <- summary(aOne_lm)
+
+aOne_lm_noLargePartials_summary <- summary(aOne_lm_noLargePartials)
+```
+
+
+
+
+##### Adj R2  
+
+```{r}
+
+aOne_lm_summary$adj.r.squared
+
+
+aOne_lm_noLargePartials_summary$adj.r.squared
+```
+
+
+
+#####	Internal CV Press  
+
+
+```{r}
+
+press(aOne_lm)
+
+press(aOne_lm_noLargePartials)
+
+```
+
+	
+##### Parameters
+Estimates:
+```{r}
+pander(aOne_lm_summary$coefficients)
+
+```
+
+
+
+Interpretation:
+
+```{r}
+
+xIncrse <- aOne_lm_summary$coefficients[2]
+
+yIncrse <- exp(exp(xIncrse))
+
+```
+
+
+
+Confidence Intervals:
+
+```{r}
+pander(
+  confint(aOne_lm)
+  )
+
+
+pander(
+  confint(aOne_lm_noLargePartials)
+  )
+
+```
+
+
+
+Conclusion
+	A short summary of the analysis.
+	
+
+
+Analysis Question 2
+
+
+Restatement of Problem 
+
+Model Selection
+		Type of Selection
+			Stepwise
+      Forward
+      Backward
+      Custom 		 
+
+		Checking Assumptions 
+			Residual Plots
+			Influential point analysis (Cook’s D and Leverage)
+			Make sure to address each assumption
+
+		Comparing Competing Models
+			Adj R2   
+			Internal CV Press   
+			Kaggle Score 
+
+		Conclusion: A short summary of the analysis.  
